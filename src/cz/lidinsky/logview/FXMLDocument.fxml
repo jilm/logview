@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import java.util.*?>
+<?import javafx.scene.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<TableView fx:id="logTable" prefHeight="292.0" prefWidth="451.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="cz.lidinsky.logview.LogViewController">
+  <columns>
+    <TableColumn fx:id="logTableNameCol" prefWidth="75.0" text="Name" />
+    <TableColumn fx:id="logTableLevelCol" prefWidth="75.0" text="Severity" />
+      <TableColumn fx:id="logTableTimestampCol" prefWidth="75.0" text="Timestamp" />
+      <TableColumn fx:id="logTableMessageCol" prefWidth="185.0" text="Text" />
+  </columns>
+</TableView>
