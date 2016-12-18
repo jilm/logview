@@ -17,6 +17,7 @@
 package cz.lidinsky.logview;
 
 import cz.lidinsky.tools.text.MapBuilder;
+import java.time.Instant;
 import java.util.logging.Formatter;
 import java.util.logging.LogRecord;
 
@@ -32,6 +33,8 @@ public class LogFormatter extends Formatter {
     MapBuilder builder = new MapBuilder();
     builder.put("name", record.getLoggerName());
     builder.put("message", record.getMessage());
+    builder.put("level", record.getLevel().getName());
+    builder.put("timestamp", Instant.ofEpochMilli(record.getMillis()).toString());
     return builder.getBuffer().getBuffer();
   }
 

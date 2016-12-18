@@ -18,7 +18,6 @@ package cz.lidinsky.logview;
 
 import cz.lidinsky.tools.text.StrBuffer2;
 import cz.lidinsky.tools.text.StrBufferReader;
-import cz.lidinsky.tools.text.Table;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -27,7 +26,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.function.Consumer;
 import java.util.logging.Level;
-import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
 /**
@@ -36,18 +34,18 @@ import java.util.logging.Logger;
  */
 public class LogServer implements Runnable {
 
-  private final Consumer<LogRecord> consumer;
+  private final Consumer<StrBuffer2> consumer;
 
-  public LogServer(Consumer<LogRecord> consumer) {
+  public LogServer(Consumer<StrBuffer2> consumer) {
     this.consumer = consumer;
   }
 
 
   public static void main(String[] args) throws Exception {
-    LogServer instance = new LogServer(new Consumer<LogRecord>() {
+    LogServer instance = new LogServer(new Consumer<StrBuffer2>() {
 
       @Override
-      public void accept(LogRecord record) {
+      public void accept(StrBuffer2 record) {
         System.out.println(record.toString());
       }
 
@@ -67,22 +65,46 @@ public class LogServer implements Runnable {
   @Override
   public void run() {
     try {
+//      consumer.accept(
+//              new LogRecord(
+//                      Level.INFO, "Starting LogView server thread"));
       ServerSocket server = new ServerSocket(12347);
-      Socket socket = server.accept();
-      InputStream is = socket.getInputStream();
-      Reader reader = new InputStreamReader(is);
-      StrBufferReader bufferReader = new StrBufferReader(reader);
       while (true) {
-        StrBuffer2 buffer = bufferReader.readBuffer();
-        System.out.println(buffer.getBuffer());
-        Table table = new Table(buffer);
-        System.out.println(table.get("name") + " " + table.get("message"));
-        LogRecord record = new LogRecord(Level.INFO, table.get("message"));
-        consumer.accept(record);
+        Socket socket = server.accept();
+//        consumer.accept(new LogRecord(Level.INFO, "Log client accepted."));
+        InputStream is = socket.getInputStream();
+        Reader reader = new InputStreamReader(is);
+        StrBufferReader bufferReader = new StrBufferReader(reader);
+        Client client = new Client(bufferReader);
+        new Thread(client).start();
       }
     } catch (IOException ex) {
       Logger.getLogger(LogServer.class.getName()).log(Level.SEVERE, null, ex);
     }
+  }
+
+  private class Client implements Runnable {
+
+    private final StrBufferReader reader;
+
+    public Client(final StrBufferReader reader) {
+      this.reader = reader;
+    }
+
+    @Override
+    public void run() {
+      try {
+        while (true) {
+          StrBuffer2 buffer = reader.readBuffer();
+          consumer.accept(buffer);
+        }
+      } catch (IOException ex) {
+        Logger.getLogger(LogServer.class.getName()).log(Level.SEVERE, null, ex);
+      }
+    }
+
+
+
   }
 
 }

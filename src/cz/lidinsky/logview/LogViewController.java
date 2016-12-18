@@ -5,15 +5,12 @@
  */
 package cz.lidinsky.logview;
 
+import cz.lidinsky.tools.text.StrBuffer2;
+import cz.lidinsky.tools.text.Table;
 import java.net.URL;
-import java.time.Instant;
 import java.util.ResourceBundle;
 import java.util.function.Consumer;
-import java.util.logging.Handler;
-import java.util.logging.Level;
-import java.util.logging.LogRecord;
 import java.util.logging.Logger;
-import javafx.application.Platform;
 import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -33,9 +30,9 @@ public class LogViewController implements Initializable {
   public static final Logger logger2 = Logger.getLogger("cz.control4j");
 
   @FXML private TableView<LogRecord> logTable;
-  @FXML private TableColumn<LogRecord, Instant> logTableTimestampCol;
+  @FXML private TableColumn<LogRecord, String> logTableTimestampCol;
   @FXML private TableColumn<LogRecord, String> logTableNameCol;
-  @FXML private TableColumn<LogRecord, Level> logTableLevelCol;
+  @FXML private TableColumn<LogRecord, String> logTableLevelCol;
   @FXML private TableColumn<LogRecord, String> logTableMessageCol;
 
   private ObservableList<LogRecord> logData;
@@ -45,49 +42,53 @@ public class LogViewController implements Initializable {
 
     // log timestamp
     logTableTimestampCol.setCellValueFactory(
-            param -> new SimpleObjectProperty(
-                    Instant.ofEpochMilli(param.getValue().getMillis()))
+            param -> new SimpleStringProperty(param.getValue().timestamp)
     );
 
     // log name
     logTableNameCol.setCellValueFactory(
-            param -> new SimpleStringProperty(param.getValue().getLoggerName())
+            param -> new SimpleStringProperty(param.getValue().name)
     );
 
     // log message
     logTableMessageCol.setCellValueFactory(
-            param -> new SimpleStringProperty(
-              param.getValue().getMessage())
+            param -> new SimpleStringProperty(param.getValue().message)
     );
 
     // log level
     logTableLevelCol.setCellValueFactory(
-            param -> new SimpleObjectProperty(param.getValue().getLevel())
+            param -> new SimpleObjectProperty(param.getValue().level)
     );
 
     logData = FXCollections.observableArrayList();
     logTable.setItems(logData);
-    Handler logHandler = new Handler() {
-      @Override
-      public void publish(LogRecord record) {
-        Platform.runLater(() -> logData.add(record));
-      }
-
-      @Override
-      public void flush() {
-      }
-
-      @Override
-      public void close() throws SecurityException {
-      }
-    };
+//    Handler logHandler = new Handler() {
+//      @Override
+//      public void publish(LogRecord record) {
+//        Platform.runLater(() -> logData.add(record));
+//      }
+//
+//      @Override
+//      public void flush() {
+//      }
+//
+//      @Override
+//      public void close() throws SecurityException {
+//      }
+//    };
 
     LogServer server = new LogServer(
-      new Consumer<LogRecord>() {
+      new Consumer<StrBuffer2>() {
 
         @Override
-        public void accept(LogRecord record) {
-          logData.add(record);
+        public void accept(StrBuffer2 record) {
+          LogRecord logRecord = new LogRecord();
+          Table table = new Table(record);
+          logRecord.name = table.get("name");
+          logRecord.level = table.get("level");
+          logRecord.message = table.get("message");
+          logRecord.timestamp = table.get("timestamp");
+          logData.add(logRecord);
         }
 
       });
@@ -101,8 +102,13 @@ public class LogViewController implements Initializable {
     //logData.add(new LogRecord(Level.INFO, "Starting management console."));
     //Logger.getLogger("cz.lidinsky").info("Starting the managemen console");
 
+  }
 
-
+  private static class LogRecord {
+    String name;
+    String level;
+    String timestamp;
+    String message;
   }
 
 }
