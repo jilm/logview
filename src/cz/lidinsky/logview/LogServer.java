@@ -29,20 +29,42 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- *
- * @author jilm
+ * Listen on specified port for incoming connections. A new thread is run for
+ * each accepted peer.
  */
-public class LogServer implements Runnable {
+public class LogServer implements Runnable, AutoCloseable {
 
+  /**
+   * A function which is called whenever new log record is received.
+   */
   private final Consumer<StrBuffer2> consumer;
 
-  public LogServer(Consumer<StrBuffer2> consumer) {
+  private final int port;
+
+  private boolean stop;
+
+  private int clients;
+
+  /**
+   * Configure new log server.
+   *
+   * @param port
+   *            a port number to listen to
+   *
+   * @param consumer
+   *            a function which is called whenever some client receives
+   *            a log message
+   */
+  public LogServer(final int port, final Consumer<StrBuffer2> consumer) {
     this.consumer = consumer;
+    this.port = port;
+    this.stop = false;
+    this.clients = 0;
   }
 
 
   public static void main(String[] args) throws Exception {
-    LogServer instance = new LogServer(new Consumer<StrBuffer2>() {
+    LogServer instance = new LogServer(12347, new Consumer<StrBuffer2>() {
 
       @Override
       public void accept(StrBuffer2 record) {
@@ -64,43 +86,69 @@ public class LogServer implements Runnable {
 
   @Override
   public void run() {
-    try {
-//      consumer.accept(
-//              new LogRecord(
-//                      Level.INFO, "Starting LogView server thread"));
-      ServerSocket server = new ServerSocket(12347);
-      while (true) {
+    try (
+      ServerSocket server = new ServerSocket(port);
+            ) {
+      Logger.getLogger(LogServer.class.getName())
+              .info(String.format(
+                      "Log server has been successfuly created and listens on port %d.", port));
+      while (!stop) {
         Socket socket = server.accept();
-//        consumer.accept(new LogRecord(Level.INFO, "Log client accepted."));
-        InputStream is = socket.getInputStream();
-        Reader reader = new InputStreamReader(is);
-        StrBufferReader bufferReader = new StrBufferReader(reader);
-        Client client = new Client(bufferReader);
+        Client client = new Client(socket.getInputStream());
         new Thread(client).start();
       }
     } catch (IOException ex) {
       Logger.getLogger(LogServer.class.getName()).log(Level.SEVERE, null, ex);
+    } finally {
+      Logger.getLogger(LogServer.class.getName())
+              .info(String.format(
+                      "Log server is going down!", port));
     }
   }
 
-  private class Client implements Runnable {
+  @Override
+  public void close() throws Exception {
+    this.stop = true;
+      Logger.getLogger(LogServer.class.getName())
+              .info(String.format(
+                      "An order to stop the log server has been received!", port));
+  }
 
-    private final StrBufferReader reader;
 
-    public Client(final StrBufferReader reader) {
-      this.reader = reader;
+
+  private class Client implements Runnable, AutoCloseable {
+
+    private final InputStream is;
+
+    public Client(final InputStream is) {
+      this.is = is;
     }
 
     @Override
     public void run() {
-      try {
-        while (true) {
-          StrBuffer2 buffer = reader.readBuffer();
+      try (
+        Reader reader = new InputStreamReader(is);
+        StrBufferReader bufferReader = new StrBufferReader(reader);
+              ) {
+        Logger.getLogger(LogServer.class.getName())
+                .info(String.format("New log peer client has been accepted, number of peers: %d", ++clients));
+        while (!stop) {
+          StrBuffer2 buffer = bufferReader.readBuffer();
           consumer.accept(buffer);
         }
       } catch (IOException ex) {
         Logger.getLogger(LogServer.class.getName()).log(Level.SEVERE, null, ex);
+      } catch (Exception ex) {
+        Logger.getLogger(LogServer.class.getName()).log(Level.SEVERE, null, ex);
+      } finally {
+        Logger.getLogger(LogServer.class.getName())
+                .info(String.format("A client is stopped: %d", --clients));
       }
+    }
+
+    @Override
+    public void close() throws Exception {
+      this.is.close();
     }
 
 

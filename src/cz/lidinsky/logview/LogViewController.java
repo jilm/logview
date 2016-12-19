@@ -77,7 +77,7 @@ public class LogViewController implements Initializable {
 //      }
 //    };
 
-    LogServer server = new LogServer(
+    LogServer server = new LogServer(12347,
       new Consumer<StrBuffer2>() {
 
         @Override
